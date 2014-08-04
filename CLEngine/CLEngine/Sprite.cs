@@ -13,10 +13,13 @@ namespace CLEngine
     {
         static List<Sprite> spriteList = new List<Sprite>();
         static List<LargeSprite> largeSpriteList = new List<LargeSprite>();
-                
+
+        public List<Sprite> colliders = new List<Sprite>();
         public Position oldPosition = new Position(0, 0);
         public Position position = new Position(0, 0);
         public Pixel symbol;
+
+        public bool hasFrameUpdate = true;
 
         public Sprite(char sym, Position pos)
         {
@@ -49,6 +52,38 @@ namespace CLEngine
             if (addSprite) AddSprite(this);
         }
 
+        public bool MoveCollision(string dir, int am)
+        {
+            Position temp = null;
+            switch (dir)
+            {
+                case "UP":
+                    temp = position.TempMoveY(-am);
+                    break;
+                case "DOWN":
+                    temp = position.TempMoveY(am);
+                    break;
+                case "LEFT":
+                    temp = position.TempMoveX(-am);
+                    break;
+                case "RIGHT":
+                    temp = position.TempMoveX(am);
+                    break;
+                default:
+                    return false;
+            }
+            foreach (Sprite s in colliders)
+            {
+                if (temp.Equals(s.position))
+                {
+                    return false;
+                }
+            }
+
+            Move(dir, am);
+            return true;
+        }
+
         public void Move(string dir, int am)
         {
             oldPosition = position.Clone();
@@ -69,6 +104,7 @@ namespace CLEngine
                 default:
                     break;
             }
+            hasFrameUpdate = true;
         }
 
         public static bool CheckColliding(Sprite spr1, Sprite spr2)
@@ -133,6 +169,18 @@ namespace CLEngine
             return largeSpriteList;
         }
 
+        public void AddCollider(Sprite s)
+        {
+            colliders.Add(s);
+        }
+
+        public void AddLargeCollider(LargeSprite hadron)
+        {
+            foreach (Sprite s in hadron.sprites)
+            {
+                colliders.Add(s);
+            }
+        }
     }
 
     /// <summary>
@@ -141,6 +189,9 @@ namespace CLEngine
     class LargeSprite
     {
         public List<Sprite> sprites = new List<Sprite>();
+        public List<Sprite> colliders = new List<Sprite>();
+
+        public bool hasFrameUpdate = true;
 
         public LargeSprite(char[] syms, ConsoleColor[] colors, Rect rect, int depth)
         {
@@ -178,11 +229,68 @@ namespace CLEngine
             Sprite.AddLargeSprite(this);
         }
 
+        public void GenerateColliders()
+        {
+
+        }
+
+        public bool MoveCollision(string dir, int am)
+        {
+            DateTime tempTime = DateTime.Now;
+            Position temp = null;
+            foreach (Sprite s in sprites)
+            {
+                switch (dir)
+                {
+                    case "UP":
+                        temp = s.position.TempMoveY(-am);
+                        break;
+                    case "DOWN":
+                        temp = s.position.TempMoveY(am);
+                        break;
+                    case "LEFT":
+                        temp = s.position.TempMoveX(-am);
+                        break;
+                    case "RIGHT":
+                        temp = s.position.TempMoveX(am);
+                        break;
+                    default:
+                        return false;
+                }
+
+                foreach (Sprite cs in colliders)
+                {
+                    if (temp.Equals(cs.position))
+                    {
+                        return false;
+                    }
+                }
+            }
+
+            Move(dir, am);
+            Engine.QueueMessage("Collision time: " + (DateTime.Now - tempTime));
+            return true;
+        }
+
         public void Move(string dir, int am)
         {
             foreach (Sprite s in sprites)
             {
                 s.Move(dir, am);
+            }
+            hasFrameUpdate = true;
+        }
+
+        public void AddCollider(Sprite s)
+        {
+            colliders.Add(s);
+        }
+
+        public void AddLargeCollider(LargeSprite hadron)
+        {
+            foreach (Sprite s in hadron.sprites)
+            {
+                colliders.Add(s);
             }
         }
     }

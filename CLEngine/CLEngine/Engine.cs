@@ -9,6 +9,9 @@ namespace CLEngine
 {
     class Engine
     {
+        public static string title = "CCLE";
+        public static string version = "v0.0.2a";
+
         public static Renderer renderer;
         public static Pixel[] level;
         public static Pixel[] activeScene;
@@ -66,25 +69,21 @@ namespace CLEngine
         public static void CleanDirtyPixel(Sprite s)
         {
             int oldOrdinate = s.oldPosition.ToPixel();
+            if (!s.hasFrameUpdate) return;
+            if (activeScene[oldOrdinate].IsEqualTo(level[oldOrdinate])) return;
             activeScene[oldOrdinate] = level[oldOrdinate];
             renderer.UpdateScene(activeScene, s.oldPosition);
-            if (s.position.Equals(new Position(1, 1)))
-            {
-                QueueMessage("Suspect: " + s.symbol.ch.ToString());
-            }
         }
 
         public static void UpdateNewPixel(Sprite s)
         {
             int ordinate = s.position.ToPixel();
+            if (!s.hasFrameUpdate) return;
+            s.hasFrameUpdate = false;
             if (s.symbol.z >= activeScene[ordinate].z)
             {
                 activeScene[ordinate] = s.symbol;
                 renderer.UpdateScene(activeScene, s.position);
-                if (s.position.Equals(new Position(1, 1)))
-                {
-                    QueueMessage("Suspect: " + s.symbol.ch.ToString());
-                }
             }
         }
 
@@ -94,12 +93,16 @@ namespace CLEngine
             UpdateNewPixel(s);
         }
 
-        public static void UpdateSpriteInScene(LargeSprite s)
+        public static void CleanLargeSpriteInScene(LargeSprite s)
         {
             foreach (Sprite ss in s.sprites)
             {
                 CleanDirtyPixel(ss);
             }
+        }
+
+        public static void UpdateLargeSpriteInScene(LargeSprite s)
+        {
             foreach (Sprite ss in s.sprites)
             {
                 UpdateNewPixel(ss);
@@ -109,10 +112,10 @@ namespace CLEngine
         public static void WriteConsoleQueue()
         {
             Console.SetCursorPosition(0, 23);
-            Console.Write("                   ");
+            Console.Write("                                                                   ");
             Console.SetCursorPosition(0, 23);
 
-            foreach (string s in consoleQueue)
+            foreach (string s in consoleQueue.ToList())
             {
                 Console.Write(s);
             }
@@ -138,7 +141,12 @@ namespace CLEngine
 
             foreach (LargeSprite ls in Sprite.GetLargeSprites())
             {
-                UpdateSpriteInScene(ls);
+                CleanLargeSpriteInScene(ls);
+            }
+
+            foreach (LargeSprite ls in Sprite.GetLargeSprites())
+            {
+                UpdateLargeSpriteInScene(ls);
             }
         }
     }
@@ -200,6 +208,11 @@ namespace CLEngine
             z = nz;
         }
 
+        public bool IsEqualTo(Pixel pixel)
+        {
+            return (ch == pixel.ch && fColor == pixel.fColor && bColor == pixel.bColor && z == pixel.z);
+        }
+
         public static Position PixelToPosition(Pixel o)
         {
             return PixelToPosition(o.pixelPosition);
@@ -249,6 +262,7 @@ namespace CLEngine
     {
         public volatile bool isRunning;
         public volatile bool hasUpdate;
+        public volatile bool debugMode = false;
         public volatile Pixel[] charScene;
         public float frameRate;
 
@@ -270,7 +284,7 @@ namespace CLEngine
             List<float> CycleTimesList = new List<float>();
 
             Console.SetCursorPosition(0, 0);
-            Console.WriteLine("CCLE v0.0.1a");
+            Console.WriteLine(Engine.title + " " + Engine.version);
             Engine.DrawScene(charScene);
 
             while (isRunning)
@@ -278,15 +292,18 @@ namespace CLEngine
                 float CycleTime = (DateTime.Now - tempTime).Milliseconds;
                 if (dirtyPositions.Count > 0)
                 {
-                    int c = 0;
+
+                    int c = dirtyPositions.Count - 1;
                     do
                     {
                         Position dp = dirtyPositions[c];
+                        if (dp == null) break;
                         Engine.UpdatePixel(charScene, dp.x, dp.y);
+                        if (dp == null) break;
                         dirtyPositions.RemoveAt(c);
-                        c++;
+                        c--;
                     }
-                    while (c < dirtyPositions.Count());
+                    while (c >= 0);
 
                     try
                     {
@@ -296,13 +313,9 @@ namespace CLEngine
                         float AvCycleTime = CycleTimesList.Average();
 
                         Console.SetCursorPosition(0, 21);
+                        Console.ResetColor();
 
-                        Console.Write("Averages over " + frameCount.ToString() + " frames: ");
-                        Console.Write("Cycle time: " + AvCycleTime.ToString("n2") + "ms ");
-                        Console.WriteLine("| Est.FPS: " + (1000.0 / AvCycleTime).ToString("n2"));
-                        Console.Write("Last frame: ");
-                        Console.Write("Cycle time: " + CycleTime.ToString("n2") + "ms ");
-                        Console.WriteLine("| True FPS: " + (frameCount / (DateTime.Now - startTime).Seconds).ToString("n2"));
+                        if (debugMode) WriteDebugInfo(frameCount, AvCycleTime, CycleTime, startTime);
 
                         frameCount += 1;
                     }
@@ -319,13 +332,35 @@ namespace CLEngine
                     hasUpdate = false;
                 }
                 tempTime = DateTime.Now;
+                Thread.Sleep(10);
             }
+        }
+
+        public void WriteDebugInfo(int frameCount, float AvCycleTime, float CycleTime, DateTime startTime)
+        {
+            Console.Write("Averages over " + frameCount + " frames: ");
+            Console.Write("Cycle time: " + AvCycleTime.ToString("n2") + "ms ");
+            Console.WriteLine("| Est.FPS: " + (1000.0 / AvCycleTime).ToString("n2"));
+            Console.Write("Last frame: ");
+            Console.Write("Cycle time: " + CycleTime.ToString("n2") + "ms ");
+            Console.WriteLine("| True FPS: " + (frameCount / (DateTime.Now - startTime).Seconds).ToString("n2"));
         }
 
         public void UpdateScene(Pixel[] newScene)
         {
             charScene = newScene;
             hasUpdate = true;
+        }
+
+        public void Refresh()
+        {
+            Console.ResetColor();
+            Console.Clear();
+            Console.SetCursorPosition(0, 0);
+            Console.WriteLine(Engine.title + " " + Engine.version);
+            Engine.DrawScene(charScene);
+            hasUpdate = true;
+            Console.Beep(3767, 10);
         }
 
         public void UpdateScene(Pixel[] newScene, int x, int y)
@@ -357,8 +392,8 @@ namespace CLEngine
         public int x;
         public int y;
 
-        public int[] xBounds = new int[2] { 1, 77 };
-        public int[] yBounds = new int[2] { 1, 18 };
+        public int[] xBounds = new int[2] { 0, 78 };
+        public int[] yBounds = new int[2] { 0, 19 };
 
         public Position(int nx, int ny)
         {
@@ -377,6 +412,16 @@ namespace CLEngine
         {
             y += dy;
             CheckBounds();
+        }
+
+        public Position TempMoveX(int dx)
+        {
+            return new Position(x + dx, y);
+        }
+
+        public Position TempMoveY(int dy)
+        {
+            return new Position(x, y + dy);
         }
 
         public void SetX(int nx)
@@ -427,6 +472,16 @@ namespace CLEngine
         public static bool AreEqual(Position pos1, Position pos2)
         {
             return (pos1.x == pos2.x && pos1.y == pos2.y);
+        }
+
+        static public Position operator +(Position p1, Position p2)
+        {
+            return new Position(p1.x + p2.x, p1.y + p2.y);
+        }
+
+        static public Position operator -(Position p1, Position p2)
+        {
+            return new Position(p1.x - p2.x, p1.y - p2.y);
         }
     }
 
