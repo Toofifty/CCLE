@@ -9,47 +9,45 @@ namespace CLEngine
     /// <summary>
     /// Basic (1x1) sprite.
     /// </summary>
-    class Sprite
+    class BaseSprite
     {
         static List<Sprite> spriteList = new List<Sprite>();
-        static List<LargeSprite> largeSpriteList = new List<LargeSprite>();
 
-        public List<Sprite> colliders = new List<Sprite>();
+        public List<BaseSprite> colliders = new List<BaseSprite>();
         public Position oldPosition = new Position(0, 0);
         public Position position = new Position(0, 0);
         public Pixel symbol;
 
-        public bool hasFrameUpdate = true;
+        public Sprite owner;
 
-        public Sprite(char sym, Position pos)
+        public BaseSprite(char sym, Position pos, Sprite o)
         {
             position = pos;
             symbol = new Pixel(sym, position, ConsoleColor.Cyan, ConsoleColor.Black);
-            AddSprite(this);
+            owner = o;
         }
 
-        public Sprite(char sym, int x, int y)
+        public BaseSprite(char sym, Position pos, ConsoleColor f, Sprite o)
         {
-            position.SetX(x);
-            position.SetY(y);
-            symbol = new Pixel(sym, position, ConsoleColor.Cyan, ConsoleColor.Black);
-            AddSprite(this);
+            position = pos;
+            symbol = new Pixel(sym, position, f, ConsoleColor.Black);
+            owner = o;
         }
 
-        public Sprite(char sym, int x, int y, bool addSprite, ConsoleColor foreGround)
+        public BaseSprite(char sym, int x, int y, bool addSprite, ConsoleColor foreGround, Sprite o)
         {
             position.SetX(x);
             position.SetY(y);
             symbol = new Pixel(sym, position, foreGround, ConsoleColor.Black);
-            if (addSprite) AddSprite(this);
+            owner = o;
         }
 
-        public Sprite(char sym, int x, int y, bool addSprite)
+        public BaseSprite(char sym, int x, int y, bool addSprite, Sprite o)
         {
             position.SetX(x);
             position.SetY(y);
             symbol = new Pixel(sym, position, ConsoleColor.Cyan, ConsoleColor.Black);
-            if (addSprite) AddSprite(this);
+            owner = o;
         }
 
         public bool MoveCollision(string dir, int am)
@@ -72,7 +70,7 @@ namespace CLEngine
                 default:
                     return false;
             }
-            foreach (Sprite s in colliders)
+            foreach (BaseSprite s in colliders)
             {
                 if (temp.Equals(s.position))
                 {
@@ -86,7 +84,7 @@ namespace CLEngine
 
         public void Move(string dir, int am)
         {
-            oldPosition = position.Clone();
+            Engine.renderer.MarkDirty(position.Clone());
             switch (dir)
             {
                 case "UP":
@@ -104,33 +102,32 @@ namespace CLEngine
                 default:
                     break;
             }
-            hasFrameUpdate = true;
         }
 
-        public static bool CheckColliding(Sprite spr1, Sprite spr2)
+        public static bool CheckColliding(BaseSprite spr1, BaseSprite spr2)
         {
             return Position.AreEqual(spr1.position, spr2.position);
         }
 
-        public static bool CheckColliding(LargeSprite spr1, Sprite spr2)
+        public static bool CheckColliding(Sprite spr1, BaseSprite spr2)
         {
-            foreach (Sprite s in spr1.sprites)
+            foreach (BaseSprite s in spr1.sprites)
             {
                 if (CheckColliding(s, spr2)) return true;
             }
             return false;
         }
 
-        public static bool CheckColliding(Sprite spr1, LargeSprite spr2)
+        public static bool CheckColliding(BaseSprite spr1, Sprite spr2)
         {
             return CheckColliding(spr2, spr1);
         }
 
-        public static bool CheckColliding(LargeSprite spr1, LargeSprite spr2)
+        public static bool CheckColliding(Sprite spr1, Sprite spr2)
         {
-            foreach (Sprite s1 in spr1.sprites)
+            foreach (BaseSprite s1 in spr1.sprites)
             {
-                foreach (Sprite s2 in spr2.sprites)
+                foreach (BaseSprite s2 in spr2.sprites)
                 {
                     if (CheckColliding(s1, s2)) return true;
                 }
@@ -141,7 +138,6 @@ namespace CLEngine
         public static void AddSprite(Sprite spr)
         {
             spriteList.Add(spr);
-            Engine.QueueMessage(spriteList.ToString());
         }
 
         public static void RemoveSprite(Sprite spr)
@@ -149,96 +145,101 @@ namespace CLEngine
             spriteList.Remove(spr);
         }
 
+        public static void ClearSprites()
+        {
+            List<Sprite> temp = new List<Sprite>();
+            foreach (Sprite s in spriteList)
+            {
+                temp.Add(s);
+            }
+            foreach (Sprite s in temp)
+            {
+                RemoveSprite(s);
+            }
+        }
+
         public static List<Sprite> GetSprites()
         {
             return spriteList;
         }
 
-        public static void AddLargeSprite(LargeSprite spr)
-        {
-            largeSpriteList.Add(spr);
-        }
-
-        public static void RemoveLargeSprite(LargeSprite spr)
-        {
-            largeSpriteList.Remove(spr);
-        }
-
-        public static List<LargeSprite> GetLargeSprites()
-        {
-            return largeSpriteList;
-        }
-
         public void AddCollider(Sprite s)
         {
-            colliders.Add(s);
-        }
-
-        public void AddLargeCollider(LargeSprite hadron)
-        {
-            foreach (Sprite s in hadron.sprites)
+            foreach (BaseSprite bs in s.sprites)
             {
-                colliders.Add(s);
+                colliders.Add(bs);
             }
         }
     }
 
     /// <summary>
-    /// Compendium of sprites to create larger ones
+    /// Create a sprite of one or more pixels
     /// </summary>
-    class LargeSprite
+    class Sprite
     {
-        public List<Sprite> sprites = new List<Sprite>();
-        public List<Sprite> colliders = new List<Sprite>();
+        public List<BaseSprite> sprites = new List<BaseSprite>();
+        public List<BaseSprite> colliders = new List<BaseSprite>();
 
-        public bool hasFrameUpdate = true;
+        public Sprite lastCollision = null;
 
-        public LargeSprite(char[] syms, ConsoleColor[] colors, Rect rect, int depth)
+        public int[] dimensions;
+
+        public bool dirty = true;
+
+        public Sprite(char[] syms, ConsoleColor[] colors, Rect rect, int depth)
         {
             for (int i = 0; i < rect.h; i++)
             {
                 for (int j = 0; j < rect.w; j++)
                 {
-                    sprites.Add(new Sprite(syms[i * rect.w + j], j + rect.topLeft.x, i + rect.topLeft.y, false, colors[i * rect.w + j]));
+                    sprites.Add(new BaseSprite(syms[i * rect.w + j], j + rect.topLeft.x, i + rect.topLeft.y, false, colors[i * rect.w + j], this));
                 }
             }
 
-            foreach (Sprite s in sprites)
+            foreach (BaseSprite s in sprites)
             {
                 s.symbol.SetZ(1);
             }
 
-            Sprite.AddLargeSprite(this);
+            dimensions = new int[2]{rect.h, rect.w};
+            BaseSprite.AddSprite(this);
+            Engine.renderer.AddSprite(this);
         }
 
-        public LargeSprite(char[] syms, Rect rect, int depth)
+        public Sprite(char[] syms, Rect rect, int depth)
         {
             for (int i = 0; i < rect.h; i++)
             {
                 for (int j = 0; j < rect.w; j++)
                 {
-                    sprites.Add(new Sprite(syms[i * rect.w + j], j + rect.topLeft.x, i + rect.topLeft.y, false));
+                    sprites.Add(new BaseSprite(syms[i * rect.w + j], j + rect.topLeft.x, i + rect.topLeft.y, false, this));
                 }
             }
 
-            foreach (Sprite s in sprites)
+            foreach (BaseSprite s in sprites)
             {
                 s.symbol.SetZ(1);
             }
 
-            Sprite.AddLargeSprite(this);
+            dimensions = new int[2] { rect.h, rect.w };
+            BaseSprite.AddSprite(this);
+            Engine.renderer.AddSprite(this);
         }
 
-        public void GenerateColliders()
+        public Sprite(char sym, ConsoleColor c, Rect rect)
         {
-
+            BaseSprite bs = new BaseSprite(sym, rect.topLeft, c, this);
+            bs.symbol.SetZ(2);
+            sprites.Add(bs);
+            dimensions = new int[2] { rect.h, rect.w };
+            BaseSprite.AddSprite(this);
+            Engine.renderer.AddSprite(this);
         }
 
         public bool MoveCollision(string dir, int am)
         {
-            DateTime tempTime = DateTime.Now;
             Position temp = null;
-            foreach (Sprite s in sprites)
+            foreach (BaseSprite s in sprites)
             {
                 switch (dir)
                 {
@@ -258,39 +259,61 @@ namespace CLEngine
                         return false;
                 }
 
-                foreach (Sprite cs in colliders)
+                foreach (BaseSprite cs in colliders)
                 {
                     if (temp.Equals(cs.position))
                     {
+                        lastCollision = cs.owner;
                         return false;
                     }
                 }
             }
 
             Move(dir, am);
-            Engine.QueueMessage("Collision time: " + (DateTime.Now - tempTime));
             return true;
         }
 
         public void Move(string dir, int am)
         {
-            foreach (Sprite s in sprites)
+            foreach (BaseSprite s in sprites)
             {
                 s.Move(dir, am);
             }
-            hasFrameUpdate = true;
+            dirty = true;
+        }
+
+        public void SetPosition(Position pos)
+        {
+            for (int i = 0; i < dimensions[1]; i++)
+            {
+                for (int j = 0; j < dimensions[0]; j++)
+                {
+                    sprites[i * dimensions[0] + j].position.SetX(pos.x + j);
+                    sprites[i * dimensions[0] + j].position.SetY(pos.y + i);
+                }
+            }
+            dirty = true;
+        }
+
+        public void SetZ(int z)
+        {
+            foreach (BaseSprite bs in sprites)
+            {
+                bs.symbol.SetZ(z);
+            }
+            dirty = true;
+        }
+
+        public Position GetPosition()
+        {
+            return sprites[0].position;
         }
 
         public void AddCollider(Sprite s)
         {
-            colliders.Add(s);
-        }
-
-        public void AddLargeCollider(LargeSprite hadron)
-        {
-            foreach (Sprite s in hadron.sprites)
+            foreach (BaseSprite bs in s.sprites)
             {
-                colliders.Add(s);
+                colliders.Add(bs);
             }
         }
     }

@@ -9,145 +9,95 @@ namespace CLEngine
 {
     class Engine
     {
+        public static int gameWidth;
+        public static int gameHeight;
+
         public static string title = "CCLE";
         public static string version = "v0.0.2a";
 
         public static Renderer renderer;
+        static Thread rendererThread;
         public static Pixel[] level;
-        public static Pixel[] activeScene;
         static List<string> consoleQueue = new List<string>();
-
-        public static TimeSpan DrawScene(Pixel[] scene)
-        {
-            DateTime initialTime = DateTime.Now;
-            Console.SetCursorPosition(0, 1);
-            foreach (Pixel o in scene)
-            {
-                if (Console.BackgroundColor != o.bColor) Console.BackgroundColor = o.bColor;
-                if (Console.ForegroundColor != o.fColor) Console.ForegroundColor = o.fColor;
-                Console.Write(o.ch);
-            }
-            return (DateTime.Now - initialTime);
-        }
-
-        public static TimeSpan UpdatePixel(Pixel[] scene, int x, int y)
-        {
-            DateTime initialTime = DateTime.Now;
-
-            Console.SetCursorPosition(x, y + 1);
-            Pixel current = scene[Position.PositionToPixel(x, y)];
-            if (current.ch == '.')
-            {
-                int result = new Random().Next(5);
-                switch (result)
-                {
-                    case 0:
-                        current.fColor = ConsoleColor.Yellow;
-                        break;
-                    case 1:
-                        current.fColor = ConsoleColor.Green;
-                        break;
-                    case 2:
-                        current.fColor = ConsoleColor.Magenta;
-                        break;
-                    case 3:
-                        current.fColor = ConsoleColor.Red;
-                        break;
-                    case 4:
-                        current.fColor = ConsoleColor.Black;
-                        break;
-                }
-            }
-            if (Console.BackgroundColor != current.bColor) Console.BackgroundColor = current.bColor;
-            if (Console.ForegroundColor != current.fColor) Console.ForegroundColor = current.fColor;
-            Console.Write(current.ch);
-            Console.SetCursorPosition(13, 0);
-
-            return (DateTime.Now - initialTime);
-        }
-
-        public static void CleanDirtyPixel(Sprite s)
-        {
-            int oldOrdinate = s.oldPosition.ToPixel();
-            if (!s.hasFrameUpdate) return;
-            if (activeScene[oldOrdinate].IsEqualTo(level[oldOrdinate])) return;
-            activeScene[oldOrdinate] = level[oldOrdinate];
-            renderer.UpdateScene(activeScene, s.oldPosition);
-        }
-
-        public static void UpdateNewPixel(Sprite s)
-        {
-            int ordinate = s.position.ToPixel();
-            if (!s.hasFrameUpdate) return;
-            s.hasFrameUpdate = false;
-            if (s.symbol.z >= activeScene[ordinate].z)
-            {
-                activeScene[ordinate] = s.symbol;
-                renderer.UpdateScene(activeScene, s.position);
-            }
-        }
-
-        public static void UpdateSpriteInScene(Sprite s)
-        {
-            CleanDirtyPixel(s);
-            UpdateNewPixel(s);
-        }
-
-        public static void CleanLargeSpriteInScene(LargeSprite s)
-        {
-            foreach (Sprite ss in s.sprites)
-            {
-                CleanDirtyPixel(ss);
-            }
-        }
-
-        public static void UpdateLargeSpriteInScene(LargeSprite s)
-        {
-            foreach (Sprite ss in s.sprites)
-            {
-                UpdateNewPixel(ss);
-            }
-        }
 
         public static void WriteConsoleQueue()
         {
-            Console.SetCursorPosition(0, 23);
-            Console.Write("                                                                   ");
-            Console.SetCursorPosition(0, 23);
+            Console.SetCursorPosition(0, gameHeight + 2);
+            Console.ResetColor();
 
-            foreach (string s in consoleQueue.ToList())
+            if (consoleQueue.Count() > 0)
             {
-                Console.Write(s);
+                int c = consoleQueue.Count() - 1;
+                do
+                {
+                    try
+                    {
+                        string s = consoleQueue[c];
+                        Console.WriteLine(s + "                  ");
+                    }
+                    catch (Exception e)
+                    {
+                        Console.WriteLine(e);
+                    }
+                    c--;
+                }
+                while (c >= 0);
+
+                while (consoleQueue.Count() > 6)
+                {
+                    consoleQueue.RemoveAt(0);
+                }
             }
-            consoleQueue.Clear();
         }
 
         public static void QueueMessage(string message)
         {
             consoleQueue.Add(message);
+
+            while (consoleQueue.Count() > 6)
+            {
+                consoleQueue.RemoveAt(0);
+            }
         }
 
-        public static void QueuePixelUpdate(Pixel[] scene, Position pos)
+        public static void SetGameSize(int width, int height)
         {
-            renderer.UpdateScene(scene, pos);
+            Console.SetWindowSize(width, height + 11);
+            Console.SetBufferSize(width, height + 11);
+            gameHeight = height;
+            gameWidth = width;
         }
 
-        public static void UpdateAllSprites()
+        public static void SetWindowTitle(string title)
         {
-            foreach (Sprite s in Sprite.GetSprites())
-            {
-                UpdateSpriteInScene(s);
-            }
+            Console.Title = title;
+        }
 
-            foreach (LargeSprite ls in Sprite.GetLargeSprites())
-            {
-                CleanLargeSpriteInScene(ls);
-            }
+        public static void Init()
+        {
+            Console.CursorVisible = false;
+        }
 
-            foreach (LargeSprite ls in Sprite.GetLargeSprites())
-            {
-                UpdateLargeSpriteInScene(ls);
-            }
+        public static void Init(Pixel[] level)
+        {
+            Console.CursorVisible = false;
+            renderer = new Renderer(level, 60);
+            rendererThread = new Thread(renderer.RenderScene);
+            rendererThread.Start();
+        }
+
+        public static void Init(Pixel[] level, int fps)
+        {
+            Console.CursorVisible = false;
+            renderer = new Renderer(level, fps);
+            rendererThread = new Thread(renderer.RenderScene);
+            rendererThread.Start();
+        }
+
+        public static void StopRender()
+        {
+            renderer.Stop();
+            rendererThread.Join();
         }
     }
 
@@ -220,7 +170,7 @@ namespace CLEngine
 
         public static Position PixelToPosition(int oP)
         {
-            return new Position(oP % 79, (int)(oP / 79));
+            return new Position(oP % (Engine.gameWidth), (int)(oP / (Engine.gameWidth)));
         }
 
         public static Pixel[] CharArrayToPixelArray(char[] inArray)
@@ -261,126 +211,215 @@ namespace CLEngine
     class Renderer
     {
         public volatile bool isRunning;
-        public volatile bool hasUpdate;
         public volatile bool debugMode = false;
-        public volatile Pixel[] charScene;
-        public float frameRate;
+        volatile Pixel[] background;
+        float frameRate;
 
-        public List<Position> dirtyPositions = new List<Position>();
+        List<Position> dirtyPixels = new List<Position>();
+        List<Sprite> renderSprites = new List<Sprite>();
 
+        /// <summary>
+        /// Initiate a new rendering loop.
+        /// </summary>
+        /// <param name="l"></param>
+        /// <param name="r"></param>
         public Renderer(Pixel[] l, float r)
         {
-            charScene = l;
+            background = l;
             frameRate = r;
-            hasUpdate = true;
             isRunning = true;
         }
 
+        /// <summary>
+        /// Reset one pixel to the default state (as in the scene pixel array)
+        /// </summary>
+        /// <param name="pixel"></param>
+        public void ClearPixel(Position pixel)
+        {
+            Console.SetCursorPosition(pixel.x, pixel.y + 1);
+            Console.ResetColor();
+            //Console.Write("-");
+            Console.Write(background[pixel.ToPixel()].ch);
+        }
+
+        /// <summary>
+        /// Update one sprite on the screen
+        /// </summary>
+        /// <param name="sprite"></param>
+        public void DrawSprite(Sprite sprite)
+        {
+            foreach (BaseSprite bs in sprite.sprites)
+            {
+                if (Console.ForegroundColor != bs.symbol.fColor) Console.ForegroundColor = bs.symbol.fColor;
+                if (Console.BackgroundColor != bs.symbol.bColor) Console.BackgroundColor = bs.symbol.bColor;
+                Console.SetCursorPosition(bs.position.x, bs.position.y + 1);
+                Console.Write(bs.symbol.ch);
+            }
+            sprite.dirty = false;
+        }
+
+        /// <summary>
+        /// Draw a pixel array onto the screen
+        /// </summary>
+        /// <param name="scene"></param>
+        public TimeSpan DrawScene(Pixel[] scene)
+        {
+            DateTime initialTime = DateTime.Now;
+            Console.SetCursorPosition(0, 1);
+            foreach (Pixel p in scene)
+            {
+                if (Console.BackgroundColor != p.bColor) Console.BackgroundColor = p.bColor;
+                if (Console.ForegroundColor != p.fColor) Console.ForegroundColor = p.fColor;
+                Console.Write(p.ch);
+            }
+            return (DateTime.Now - initialTime);
+        }
+
+        /// <summary>
+        /// Main render loop, must be called on a new thread.
+        /// </summary>
         public void RenderScene()
         {
-            DateTime tempTime = DateTime.Now;
             DateTime startTime = DateTime.Now;
+            DateTime tempTime = DateTime.Now;
             int frameCount = 1;
+            float CycleTime;
             List<float> CycleTimesList = new List<float>();
+            List<Position> cleanPixels = new List<Position>();
 
             Console.SetCursorPosition(0, 0);
             Console.WriteLine(Engine.title + " " + Engine.version);
-            Engine.DrawScene(charScene);
+            DrawScene(background);
 
             while (isRunning)
             {
-                float CycleTime = (DateTime.Now - tempTime).Milliseconds;
-                if (dirtyPositions.Count > 0)
+                // Clean dirty pixels
+                int i = dirtyPixels.Count();
+                for (int n = 0; n < i; n++)
                 {
-
-                    int c = dirtyPositions.Count - 1;
-                    do
-                    {
-                        Position dp = dirtyPositions[c];
-                        if (dp == null) break;
-                        Engine.UpdatePixel(charScene, dp.x, dp.y);
-                        if (dp == null) break;
-                        dirtyPositions.RemoveAt(c);
-                        c--;
-                    }
-                    while (c >= 0);
-
-                    try
-                    {
-                        CycleTime = (DateTime.Now - tempTime).Milliseconds;
-                        CycleTimesList.Add(CycleTime);
-
-                        float AvCycleTime = CycleTimesList.Average();
-
-                        Console.SetCursorPosition(0, 21);
-                        Console.ResetColor();
-
-                        if (debugMode) WriteDebugInfo(frameCount, AvCycleTime, CycleTime, startTime);
-
-                        frameCount += 1;
-                    }
-                    catch (DivideByZeroException)
-                    {
-                        continue;
-                    }
-                    catch (Exception e)
-                    {
-                        Console.WriteLine(e);
-                    }
-                    Engine.WriteConsoleQueue();
-                    Console.SetCursorPosition(12, 0);
-                    hasUpdate = false;
+                    Position pixel = dirtyPixels[n];
+                    ClearPixel(pixel);
+                    cleanPixels.Add(pixel);
                 }
-                tempTime = DateTime.Now;
+
+                foreach (Position p in cleanPixels)
+                {
+                    dirtyPixels.Remove(p);
+                }
+                cleanPixels.Clear();
+
+                // Draw dirty sprites
+                foreach (Sprite sprite in renderSprites)
+                {
+                    if (sprite.dirty)
+                    {
+                        DrawSprite(sprite);
+                    }
+                }
+
+                CycleTime = (DateTime.Now - tempTime).Milliseconds;
+
+                // Write debug
+                if (debugMode)
+                {
+                    CycleTimesList.Add(CycleTime);
+                    float AvCycleTime = CycleTimesList.Average();
+                    WriteDebugInfo(frameCount, AvCycleTime, CycleTime, startTime);
+                    tempTime = DateTime.Now;
+                }
+                
+                // Add to frame count
+                frameCount += 1;
+                Engine.WriteConsoleQueue();
                 Thread.Sleep(10);
             }
         }
 
-        public void WriteDebugInfo(int frameCount, float AvCycleTime, float CycleTime, DateTime startTime)
+        void WriteDebugInfo(int frameCount, float AvCycleTime, float CycleTime, DateTime startTime)
         {
-            Console.Write("Averages over " + frameCount + " frames: ");
-            Console.Write("Cycle time: " + AvCycleTime.ToString("n2") + "ms ");
-            Console.WriteLine("| Est.FPS: " + (1000.0 / AvCycleTime).ToString("n2"));
-            Console.Write("Last frame: ");
-            Console.Write("Cycle time: " + CycleTime.ToString("n2") + "ms ");
-            Console.WriteLine("| True FPS: " + (frameCount / (DateTime.Now - startTime).Seconds).ToString("n2"));
+            try
+            {
+                Console.SetCursorPosition(0, 21);
+                Console.ResetColor();
+                Console.Write("Averages over " + frameCount + " frames: ");
+                Console.Write("Cycle time: " + AvCycleTime.ToString("n2") + "ms ");
+                Console.WriteLine("| Est.FPS: " + (1000.0 / AvCycleTime).ToString("n2"));
+                Console.Write("Last frame: ");
+                Console.Write("Cycle time: " + CycleTime.ToString("n2") + "ms ");
+                Console.WriteLine("| True FPS: " + (frameCount / (DateTime.Now - startTime).Seconds).ToString("n2"));
+            }
+            catch (DivideByZeroException) { }
         }
 
-        public void UpdateScene(Pixel[] newScene)
-        {
-            charScene = newScene;
-            hasUpdate = true;
-        }
-
+        /// <summary>
+        /// Refresh the screen and redraw the scene and sprites
+        /// </summary>
         public void Refresh()
         {
+            isRunning = false;
             Console.ResetColor();
             Console.Clear();
             Console.SetCursorPosition(0, 0);
             Console.WriteLine(Engine.title + " " + Engine.version);
-            Engine.DrawScene(charScene);
-            hasUpdate = true;
+            DrawScene(background);
             Console.Beep(3767, 10);
+            isRunning = true;
         }
 
-        public void UpdateScene(Pixel[] newScene, int x, int y)
+        /// <summary>
+        /// Mark a pixel as dirty and update it next frame.
+        /// </summary>
+        /// <param name="pos"></param>
+        public void MarkDirty(Position pos)
         {
-            charScene = newScene;
-            dirtyPositions.Add(new Position(x, y));
-            hasUpdate = true;
+            dirtyPixels.Add(pos);
         }
 
-        public void UpdateScene(Pixel[] newScene, Position pos)
+        /// <summary>
+        /// Mark a rectangle as dirty and update it next frame.
+        /// </summary>
+        /// <param name="rect"></param>
+        public void MarkDirty(Rect rect)
         {
-            //Engine.QueueMessage(pos.ToString() + ",");
-            charScene = newScene;
-            dirtyPositions.Add(pos);
-            hasUpdate = true;
+            foreach (Position p in rect.Positions())
+            {
+                dirtyPixels.Add(p);
+            }
         }
 
+        /// <summary>
+        /// Add a sprite to the render queue.
+        /// </summary>
+        /// <param name="sprite"></param>
+        public void AddSprite(Sprite sprite)
+        {
+            renderSprites.Add(sprite);
+        }
+
+        /// <summary>
+        /// Remove a sprite from the render queue.
+        /// </summary>
+        /// <param name="sprite"></param>
+        public void RemoveSprite(Sprite sprite)
+        {
+            renderSprites.Remove(sprite);
+        }
+
+        /// <summary>
+        /// Stop the rendering loop in order to safely join the thread.
+        /// </summary>
         public void Stop()
         {
             isRunning = false;
+        }
+
+        /// <summary>
+        /// Set a new scene to be rendered.
+        /// </summary>
+        /// <param name="scene"></param>
+        public void NewScene(Pixel[] scene)
+        {
+            background = scene;
         }
     }
 
@@ -391,9 +430,6 @@ namespace CLEngine
     {
         public int x;
         public int y;
-
-        public int[] xBounds = new int[2] { 0, 78 };
-        public int[] yBounds = new int[2] { 0, 19 };
 
         public Position(int nx, int ny)
         {
@@ -438,20 +474,20 @@ namespace CLEngine
 
         public void CheckBounds()
         {
-            if (y < yBounds[0]) y = yBounds[0];
-            if (y > yBounds[1]) y = yBounds[1];
-            if (x < xBounds[0]) x = xBounds[0];
-            if (x > xBounds[1]) x = xBounds[1];
+            if (y < 0) y = 0;
+            if (x < 0) x = 0;
+            if (y > Engine.gameHeight - 1) y = Engine.gameHeight - 1;
+            if (x > Engine.gameWidth - 2) x = Engine.gameWidth - 2;
         }
 
         public int ToPixel()
         {
-            return y * 81 + x;
+            return y * (Engine.gameWidth + 1) + x;
         }
 
         public static int PositionToPixel(int x, int y)
         {
-            return y * 81 + x;
+            return y * (Engine.gameWidth + 1) + x;
         }
 
         public Position Clone()
@@ -483,6 +519,12 @@ namespace CLEngine
         {
             return new Position(p1.x - p2.x, p1.y - p2.y);
         }
+
+        static public double Distance(Position p1, Position p2)
+        {
+            //return (float)Math.Sqrt(((p1.x-p2.x)^2) + ((p1.y-p2.y)^2));
+            return Math.Sqrt(Math.Pow(p1.x - p2.x, 2d) + Math.Pow(p1.y - p2.y, 2d));
+        }
     }
 
     /// <summary>
@@ -500,6 +542,20 @@ namespace CLEngine
             w = width;
             h = height;
 
+        }
+
+        public Position[] Positions()
+        {
+            Position[] o = new Position[w * h];
+
+            for (int i = 0; i < h; i++ )
+            {
+                for (int j = 0; j < w; j++)
+                {
+                    o[i * h + w] = new Position(topLeft.x + j, topLeft.y + i);
+                }
+            }
+            return o;
         }
     }
 }
