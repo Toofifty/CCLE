@@ -86,8 +86,9 @@ namespace CLEngine
             rendererThread.Start();
         }
 
-        public static void Init(Pixel[] level, int fps)
+        public static void Init(Pixel[] l, int fps)
         {
+            level = l;
             Console.CursorVisible = false;
             renderer = new Renderer(level, fps);
             rendererThread = new Thread(renderer.RenderScene);
@@ -112,6 +113,7 @@ namespace CLEngine
         public int pixelPosition;
         public Position cartesianPosition;
         public int z;
+        public Sprite owner = null;
 
         public Pixel(char c, int pP)
         {
@@ -143,6 +145,16 @@ namespace CLEngine
             z = 0;
         }
 
+        public Pixel(char c, Position p, ConsoleColor foreground)
+        {
+            pixelPosition = p.ToPixel();
+            cartesianPosition = p;
+            ch = c;
+            fColor = foreground;
+            bColor = ConsoleColor.Black;
+            z = 0;
+        }
+
         public Pixel(char c, Position p, ConsoleColor foreground, ConsoleColor background)
         {
             pixelPosition = p.ToPixel();
@@ -161,6 +173,45 @@ namespace CLEngine
         public bool IsEqualTo(Pixel pixel)
         {
             return (ch == pixel.ch && fColor == pixel.fColor && bColor == pixel.bColor && z == pixel.z);
+        }
+
+        public void Move(string dir, int am)
+        {
+            Engine.renderer.MarkDirty(cartesianPosition.Clone());
+            switch (dir)
+            {
+                case "UP":
+                    cartesianPosition.MoveY(-am);
+                    break;
+                case "DOWN":
+                    cartesianPosition.MoveY(am);
+                    break;
+                case "LEFT":
+                    cartesianPosition.MoveX(-am);
+                    break;
+                case "RIGHT":
+                    cartesianPosition.MoveX(am);
+                    break;
+                default:
+                    break;
+            }
+        }
+
+        public static bool AreColliding(Pixel p1, Pixel p2)
+        {
+            return Position.AreEqual(p1.cartesianPosition, p2.cartesianPosition);
+        }
+
+        public static bool AreColliding(Sprite s1, Sprite s2)
+        {
+            foreach (Pixel p1 in s1.pixels)
+            {
+                foreach (Pixel p2 in s2.pixels)
+                {
+                    if (AreColliding(p1, p2)) return true;
+                }
+            }
+            return false;
         }
 
         public static Position PixelToPosition(Pixel o)
@@ -248,12 +299,12 @@ namespace CLEngine
         /// <param name="sprite"></param>
         public void DrawSprite(Sprite sprite)
         {
-            foreach (BaseSprite bs in sprite.sprites)
+            foreach (Pixel p in sprite.pixels)
             {
-                if (Console.ForegroundColor != bs.symbol.fColor) Console.ForegroundColor = bs.symbol.fColor;
-                if (Console.BackgroundColor != bs.symbol.bColor) Console.BackgroundColor = bs.symbol.bColor;
-                Console.SetCursorPosition(bs.position.x, bs.position.y + 1);
-                Console.Write(bs.symbol.ch);
+                if (Console.ForegroundColor != p.fColor) Console.ForegroundColor = p.fColor;
+                if (Console.BackgroundColor != p.bColor) Console.BackgroundColor = p.bColor;
+                Console.SetCursorPosition(p.cartesianPosition.x, p.cartesianPosition.y + 1);
+                Console.Write(p.ch);
             }
             sprite.dirty = false;
         }
@@ -298,7 +349,8 @@ namespace CLEngine
                 for (int n = 0; n < i; n++)
                 {
                     Position pixel = dirtyPixels[n];
-                    ClearPixel(pixel);
+                    if (pixel != null)
+                        ClearPixel(pixel);
                     cleanPixels.Add(pixel);
                 }
 
@@ -309,7 +361,8 @@ namespace CLEngine
                 cleanPixels.Clear();
 
                 // Draw dirty sprites
-                foreach (Sprite sprite in renderSprites)
+                Sprite[] temp = renderSprites.ToList().ToArray();
+                foreach (Sprite sprite in temp)
                 {
                     if (sprite.dirty)
                     {
@@ -482,7 +535,7 @@ namespace CLEngine
 
         public int ToPixel()
         {
-            return y * (Engine.gameWidth + 1) + x;
+            return y * (Engine.gameWidth) + x;
         }
 
         public static int PositionToPixel(int x, int y)
@@ -556,6 +609,43 @@ namespace CLEngine
                 }
             }
             return o;
+        }
+    }
+
+    class Tools
+    {
+        /// <summary>
+        /// Repeat the char given in an array of given size
+        /// </summary>
+        /// <param name="length"></param>
+        /// <param name="ch"></param>
+        /// <returns></returns>
+        public static char[] CharArray(int length, char ch)
+        {
+            char[] arr;
+            arr = new char[length];
+            for (int i = 0; i < length; i++)
+            {
+                arr[i] = ch;
+            }
+            return arr;
+        }
+
+        /// <summary>
+        /// Repeat the color given in an array of given size
+        /// </summary>
+        /// <param name="length"></param>
+        /// <param name="c"></param>
+        /// <returns></returns>
+        public static ConsoleColor[] ConsoleColorArray(int length, ConsoleColor c)
+        {
+            ConsoleColor[] arr;
+            arr = new ConsoleColor[length];
+            for (int i = 0; i < length; i++)
+            {
+                arr[i] = c;
+            }
+            return arr;
         }
     }
 }
