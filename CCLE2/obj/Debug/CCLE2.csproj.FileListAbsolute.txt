@@ -1,0 +1,6 @@
+G:\Programming\Misc\C#\CCLE2\CCLE2\bin\Debug\CCLE2.exe.config
+G:\Programming\Misc\C#\CCLE2\CCLE2\obj\Debug\CCLE2.csprojResolveAssemblyReference.cache
+G:\Programming\Misc\C#\CCLE2\CCLE2\bin\Debug\CCLE2.exe
+G:\Programming\Misc\C#\CCLE2\CCLE2\bin\Debug\CCLE2.pdb
+G:\Programming\Misc\C#\CCLE2\CCLE2\obj\Debug\CCLE2.exe
+G:\Programming\Misc\C#\CCLE2\CCLE2\obj\Debug\CCLE2.pdb

@@ -1,6 +1,0 @@
-D:\Programming\Misc\C#\CCLE\CLEngine\CLEngine\bin\Release\CLEngine.exe.config
-D:\Programming\Misc\C#\CCLE\CLEngine\CLEngine\bin\Release\CLEngine.exe
-D:\Programming\Misc\C#\CCLE\CLEngine\CLEngine\bin\Release\CLEngine.pdb
-D:\Programming\Misc\C#\CCLE\CLEngine\CLEngine\obj\Release\CLEngine.exe
-D:\Programming\Misc\C#\CCLE\CLEngine\CLEngine\obj\Release\CLEngine.pdb
-D:\Programming\Misc\C#\CCLE\CLEngine\CLEngine\obj\Release\CLEngine.csprojResolveAssemblyReference.cache
