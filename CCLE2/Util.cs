@@ -34,16 +34,16 @@ namespace CCLE
 
     class IVector
     {
-        public int x { get; set; }
-        public int y { get; set; }
+        public int X { get; set; }
+        public int Y { get; set; }
 
-        public int w { get { return x; } set { x = value; } }
-        public int h { get { return y; } set { y = value; } }
+        public int W { get { return X; } set { X = value; } }
+        public int H { get { return Y; } set { Y = value; } }
 
         public IVector(int x, int y)
         {
-            this.x = x;
-            this.y = y;
+            this.X = x;
+            this.Y = y;
         }
 
         // TODO
@@ -52,22 +52,22 @@ namespace CCLE
 
     class DVector
     {
-        public double x { get; set; }
-        public double y { get; set; }
+        public double X { get; set; }
+        public double Y { get; set; }
 
-        public double w { get { return x; } set { x = value; } }
-        public double h { get { return y; } set { y = value; } }
+        public double W { get { return X; } set { X = value; } }
+        public double H { get { return Y; } set { Y = value; } }
 
         public DVector(double x, double y)
         {
-            this.x = x;
-            this.y = y;
+            this.X = x;
+            this.Y = y;
         }
 
         public DVector Add(double x, double y)
         {
-            this.x += x;
-            this.y += y;
+            this.X += x;
+            this.Y += y;
             return this;
         }
 
@@ -78,31 +78,31 @@ namespace CCLE
 
         public DVector Add(DVector other)
         {
-            return this.Add(other.x, other.y);
+            return this.Add(other.X, other.Y);
         }
 
         public DVector Subtract(DVector other)
         {
-            return this.Add(-other.x, -other.y);
+            return this.Add(-other.X, -other.Y);
         }
 
         public static DVector operator +(DVector v1, DVector v2)
         {
-            return new DVector(v1.x + v2.x, v1.y + v2.y);
+            return new DVector(v1.X + v2.X, v1.Y + v2.Y);
         }
 
         public static DVector operator -(DVector v1, DVector v2)
         {
-            return new DVector(v1.x - v2.x, v1.y - v2.y);
+            return new DVector(v1.X - v2.X, v1.Y - v2.Y);
         }
     }
 
     class Rect
     {
-        public int x;
-        public int y;
-        public int w;
-        public int h;
+        public int X;
+        public int Y;
+        public int W;
+        public int H;
 
         public Rect(IVector pos, IVector size)
         {
@@ -122,7 +122,7 @@ namespace CCLE
 
         public void CopyRect(Rect r)
         {
-            SetRect(r.x, r.y, r.w, r.h);
+            SetRect(r.X, r.Y, r.W, r.H);
         }
 
         public void SetRect(int x, int y, int w, int h)
@@ -133,44 +133,44 @@ namespace CCLE
 
         public void CopyPosition(Rect r)
         {
-            SetPosition(r.x, r.y);
+            SetPosition(r.X, r.Y);
         }
 
         public void SetPosition(IVector v)
         {
-            SetPosition(v.x, v.y);
+            SetPosition(v.X, v.Y);
         }
 
         public virtual void SetPosition(int x, int y)
         {
-            this.x = x;
-            this.y = y;
+            this.X = x;
+            this.Y = y;
         }
 
         public void CopySize(Rect r)
         {
-            SetSize(r.w, r.h);
+            SetSize(r.W, r.H);
         }
 
         public void SetSize(IVector v)
         {
-            SetSize(v.w, v.h);
+            SetSize(v.W, v.H);
         }
 
         public virtual void SetSize(int w, int h)
         {
-            this.w = w;
-            this.h = h;
+            this.W = w;
+            this.H = h;
         }
 
         public bool InBounds(int x, int y)
         {
-            return x >= this.x && y >= this.y && x < this.x + w && y < this.y + h;
+            return x >= this.X && y >= this.Y && x < this.X + W && y < this.Y + H;
         }
 
         public override string ToString()
         {
-            return "(" + x + ", " + y + ", " + w + ", " + h + ")";
+            return "(" + X + ", " + Y + ", " + W + ", " + H + ")";
         }
 
     }

@@ -6,50 +6,56 @@ using System.Threading.Tasks;
 
 namespace CCLE
 {
-    class MessageQueue
+    class Messages
     {
-        static Sprite background;
-        static Sprite text;
+        static Sprite BackSprite;
+        static Sprite TextSprite;
 
-        static string blankString = "";
+        static string BlankString;
 
         public static void Init(Rect rect)
         {
-            background = SpriteHandler.NewSprite(rect.x, rect.y, rect.w, rect.h, Config.MESSAGE_QUEUE_BORDER);
-            text = SpriteHandler.NewSprite(rect.x + 1, rect.y + 1, rect.w - 2, rect.h - 2, Config.MESSAGE_QUEUE_BACKGROUND);
-            blankString = text.GetTexture()[0];
+            BackSprite = SpriteHandler.NewSprite(rect.X, rect.Y, rect.W, rect.H, Config.MESSAGE_QUEUE_BORDER);
+            TextSprite = SpriteHandler.NewSprite(rect.X + 1, rect.Y + 1, rect.W - 2, rect.H - 2, Config.MESSAGE_QUEUE_BACKGROUND);
+            BlankString = TextSprite.GetTexture()[0];
 
-            background.SetBackground(ConsoleColor.DarkCyan);
+            BackSprite.SetBackground(ConsoleColor.DarkCyan);
 
-            background.SetZ(99);
-            text.SetZ(99);
+            BackSprite.SetZ(99);
+            TextSprite.SetZ(99);
+        }
+
+        public static void Trash()
+        {
+            SpriteHandler.TrashSprite(BackSprite.GetName());
+            SpriteHandler.TrashSprite(TextSprite.GetName());
         }
 
         public static void SetTitle(string title)
         {
-            if (title.Length <= background.w - 2)
+            if (title.Length <= BackSprite.W - 2)
             {
-                background.GetTexture()[0] = Config.MESSAGE_QUEUE_BORDER + Util.PadRight(title, Config.MESSAGE_QUEUE_BORDER, background.w - 1);
-                text.Redraw();
+                BackSprite.GetTexture()[0] = Config.MESSAGE_QUEUE_BORDER + Util.PadRight(title, Config.MESSAGE_QUEUE_BORDER, BackSprite.W - 1);
+                TextSprite.Redraw();
             }
         }
 
-        public static void Message(string message)
+        public static void Log(string message)
         {
-            if (message.Length <= text.w)
+            if (message.Length <= TextSprite.W)
             {
-                var line = text.GetTexture();
+                var line = TextSprite.GetTexture();
                 for (var i = 0; i < line.Length; i++)
                 {
-                    if (line[i] == blankString)
+                    if (line[i] == BlankString)
                     {
                         line[i] = Util.PadRight(message, Config.MESSAGE_QUEUE_BACKGROUND, line[0].Length);
-                        text.Redraw();
+                        TextSprite.Redraw();
                         return;
                     }
                 }
 
-                for (var i = 0; i < text.h - 1; i++)
+                for (var i = 0; i < TextSprite.H - 1; i++)
                 {
                     line[i] = line[i + 1];
                 }

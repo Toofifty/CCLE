@@ -8,13 +8,13 @@ namespace CCLE
 {
     class SpriteHandler
     {
-        static Dictionary<string, Sprite> spriteDict = new Dictionary<string, Sprite>();
-        static Dictionary<string, Sprite> collidableDict = new Dictionary<string, Sprite>();
+        static Dictionary<string, Sprite> SpriteDict = new Dictionary<string, Sprite>();
+        static Dictionary<string, Sprite> CollidableDict = new Dictionary<string, Sprite>();
 
-        static List<Sprite> sprites = new List<Sprite>();
-        static List<Sprite> collidables = new List<Sprite>();
+        static List<Sprite> Sprites = new List<Sprite>();
+        static List<Sprite> Collidables = new List<Sprite>();
 
-        static List<Sprite> trashed = new List<Sprite>();
+        static List<Sprite> Trashed = new List<Sprite>();
 
         public static Sprite NewSprite(string name, int x, int y, int w, int h, char ch)
         {
@@ -42,31 +42,31 @@ namespace CCLE
 
         public static List<Sprite> GetSprites()
         {
-            return sprites;
+            return Sprites;
         }
 
         public static List<Sprite> GetTrashed()
         {
-            return trashed;
+            return Trashed;
         }
 
         public static List<Sprite> GetCollidables(int z)
         {
-            return collidables.FindAll(x => x.GetZ() == z).ToList();
+            return Collidables.FindAll(x => x.GetZ() == z).ToList();
         }
 
         public static Sprite Get(string name)
         {
-            return spriteDict[name];
+            return SpriteDict[name];
         }
 
         static Sprite AddSprite(string name, Sprite s)
         {
-            spriteDict.Add(name, s);
+            SpriteDict.Add(name, s);
             UpdateAllSpriteList();
             if (s.CanCollide())
             {
-                collidableDict.Add(name, s);
+                CollidableDict.Add(name, s);
                 UpdateCollidableList();
             }
             return s;
@@ -75,13 +75,23 @@ namespace CCLE
 
         public static void TrashSprite(string name)
         {
-            trashed.Add(Get(name));
-            spriteDict.Remove(name);
+            Trashed.Add(Get(name));
+            SpriteDict.Remove(name);
             UpdateAllSpriteList();
-            if (collidableDict.ContainsKey(name))
+            if (CollidableDict.ContainsKey(name))
             {
-                collidableDict.Remove(name);
+                CollidableDict.Remove(name);
                 UpdateCollidableList();
+            }
+        }
+
+        static void TrashSpriteLite(string name)
+        {
+            Trashed.Add(Get(name));
+            SpriteDict.Remove(name);
+            if (CollidableDict.ContainsKey(name))
+            {
+                CollidableDict.Remove(name);
             }
         }
 
@@ -93,53 +103,59 @@ namespace CCLE
 
         static void UpdateAllSpriteList()
         {
-            sprites.Clear();
-            foreach (string key in spriteDict.Keys)
-                sprites.Add(spriteDict[key]);
-            sprites = sprites.OrderBy(x => x.GetZ()).ToList();
+            Sprites.Clear();
+            foreach (string key in SpriteDict.Keys)
+                Sprites.Add(SpriteDict[key]);
+            Sprites = Sprites.OrderBy(x => x.GetZ()).ToList();
         }
 
         static void UpdateCollidableList()
         {
-            collidables.Clear();
-            foreach (string key in collidableDict.Keys)
-                collidables.Add(collidableDict[key]);
-            collidables = collidables.OrderBy(x => x.GetZ()).ToList();
+            Collidables.Clear();
+            foreach (string key in CollidableDict.Keys)
+                Collidables.Add(CollidableDict[key]);
+            Collidables = Collidables.OrderBy(x => x.GetZ()).ToList();
+        }
+
+        public static void ClearAll()
+        {
+            foreach (string key in SpriteDict.Keys.ToArray())
+            {
+                TrashSpriteLite(key);
+            }
+            UpdateAll();
         }
     }
 
     class Sprite : Rect
     {
-        string[] texture;
+        string[] Texture;
 
-        ConsoleColor mainForeground = ConsoleColor.White;
-        ConsoleColor mainBackground = ConsoleColor.Black;
-        ConsoleColor[,] complexForeground = null;
-        ConsoleColor[,] complexBackground = null; 
+        ConsoleColor Foreground = ConsoleColor.White;
+        ConsoleColor Background = ConsoleColor.Black;
+        ConsoleColor[,] ComplexForeground = null;
+        ConsoleColor[,] ComplexBackground = null; 
 
-        Rect previousRect = new Rect(0, 0, 0, 0);
-        string name;
+        Rect PreviousRect = new Rect(0, 0, 0, 0);
+        string Name;
+        string Tag;
 
-        bool collide = true;
-        Collision collision;
+        bool Collide = true;
+        Collision Collision;
 
         // determines whether spaces can collide with
         // other sprites
         // if true, the collide will be a rectangle
-        bool spaceCollide = true;
+        bool SpaceCollide = true;
 
-        bool test { set; get; } = true;
-
-        bool trash = false;
-
-        int z = 0;
+        int Z = 0;
 
         public Sprite(int x, int y, string[] texture)
             : base(x, y, 0, 0)
         {
             SetTexture(texture);
-            previousRect = new Rect(x, y, w, h);
-            collision = new Collision(this);
+            PreviousRect = new Rect(x, y, W, H);
+            Collision = new Collision(this);
             Renderer.UpdateSprite(this);
         }
 
@@ -157,25 +173,40 @@ namespace CCLE
             return new Sprite(x, y, texture.ToArray());
         }
 
-        public void SetName(string name)
-        {
-            this.name = name;
-        }
-
         public void DrawTo(Window window)
         {
-            window.DrawBlock(x, y, texture, mainForeground, mainBackground);
+            window.DrawBlock(X, Y, Texture, Foreground, Background);
+        }
+
+        public void SetName(string name)
+        {
+            Name = name;
+        }
+
+        public string GetName()
+        {
+            return Name;
+        }
+
+        public void SetTag(string tag)
+        {
+            Tag = tag;
+        }
+
+        public string GetTag()
+        {
+            return Tag;
         }
 
         public void SetTexture(string[] texture)
         {
-            this.texture = texture;
+            Texture = texture;
             SetSize(texture[0].Length > 0 ? texture[0].Length : 0, texture.Length);
         }
 
         public string[] GetTexture()
         {
-            return texture;
+            return Texture;
         }
 
         public void SetColors(ConsoleColor foreground, ConsoleColor background)
@@ -192,15 +223,15 @@ namespace CCLE
 
         public void SetForeground(ConsoleColor foreground)
         {
-            this.mainForeground = foreground;
+            Foreground = foreground;
             Redraw();
         }
 
         public void SetForeground(ConsoleColor[,] foreground)
         {
-            if (foreground.GetLength(0) == h && foreground.GetLength(1) == w)
+            if (foreground.GetLength(0) == H && foreground.GetLength(1) == W)
             {
-                this.complexForeground = foreground;
+                ComplexForeground = foreground;
             }
             else throw new BadBlockException();
             Redraw();
@@ -208,15 +239,15 @@ namespace CCLE
 
         public void SetBackground(ConsoleColor background)
         {
-            this.mainBackground = background;
+            Background = background;
             Redraw();
         }
 
         public void SetBackground(ConsoleColor[,] background)
         {
-            if (background.GetLength(0) == h && background.GetLength(1) == w)
+            if (background.GetLength(0) == H && background.GetLength(1) == W)
             {
-                this.complexBackground = background;
+                ComplexBackground = background;
             }
             else throw new BadBlockException();
             Redraw();
@@ -224,17 +255,17 @@ namespace CCLE
 
         public void SetSpaceCollide(bool value)
         {
-            spaceCollide = value;
-        }
-
-        public bool CanCollide()
-        {
-            return collide;
+            SpaceCollide = value;
         }
 
         public void SetCollide(bool collide)
         {
-            this.collide = collide;
+            Collide = collide;
+        }
+
+        public bool CanCollide()
+        {
+            return Collide;
         }
 
         public void Redraw()
@@ -242,82 +273,77 @@ namespace CCLE
             Renderer.UpdateSprite(this);
         }
 
-        public int GetZ()
-        {
-            return z;
-        }
-
         public void SetZ(int z)
         {
-            this.z = z;
+            this.Z = z;
             SpriteHandler.UpdateAll();
             Redraw();
         }
 
+        public int GetZ()
+        {
+            return Z;
+        }
+        
         public Rect GetPreviousRect()
         {
-            return previousRect;
-        }
-
-        public void FillScreenRect(Rect r, char[,] texture, ConsoleColor[,] foreground, ConsoleColor[,] background)
-        {
-            if (r.x + r.w > x && r.y + r.h > y && r.x < x + w && r.y < y + h)
-            {
-                var offsetX = r.x - x;
-                var offsetY = r.y - y;
-
-                for (var j = 0; j < texture.GetLength(Util.HEIGHT); j++) // height
-                {
-                    for (var i = 0; i < texture.GetLength(Util.WIDTH); i++) // width
-                    {
-                        if (InBounds(r.x + i, r.y + j))
-                        {
-                            try
-                            {
-                                texture[j, i] = this.texture[offsetY + j][offsetX + i];
-                            }
-                            catch (IndexOutOfRangeException)
-                            {
-                                texture[j, i] = '!';
-                            }
-                            foreground[j, i] = this.mainForeground;
-                            background[j, i] = this.mainBackground;
-                        }
-                    }
-                }
-            }
+            return PreviousRect;
         }
 
         public override void SetPosition(int x, int y)
         {
-            if (previousRect != null) previousRect = new Rect(this);
+            if (PreviousRect != null) PreviousRect = new Rect(this);
             base.SetPosition(x, y);
             Redraw();
         }
 
         public override void SetSize(int w, int h)
         {
-            if (previousRect != null) previousRect = new Rect(this);
+            if (PreviousRect != null) PreviousRect = new Rect(this);
             base.SetSize(w, h);
             Redraw();
         }
 
-        public bool CollidingWith(Rect r)
+        public void FillScreenRect(Rect r, char[,] texture, ConsoleColor[,] foreground, ConsoleColor[,] background)
         {
-            return collide && CollidingSide(r) > 0;
+            if (r.X + r.W > X && r.Y + r.H > Y && r.X < X + W && r.Y < Y + H)
+            {
+                var offsetX = r.X - X;
+                var offsetY = r.Y - Y;
+
+                for (var j = 0; j < texture.GetLength(Util.HEIGHT); j++) // height
+                {
+                    for (var i = 0; i < texture.GetLength(Util.WIDTH); i++) // width
+                    {
+                        if (InBounds(r.X + i, r.Y + j))
+                        {
+                            try
+                            {
+                                texture[j, i] = this.Texture[offsetY + j][offsetX + i];
+                            }
+                            catch (IndexOutOfRangeException)
+                            {
+                                texture[j, i] = '!';
+                            }
+                            foreground[j, i] = this.Foreground;
+                            background[j, i] = this.Background;
+                        }
+                    }
+                }
+            }
         }
 
         public int CollidingSide(Rect r)
         {
-            if (!collide || (r.x + r.w <= x || r.y + r.h <= y || r.x >= x + w || r.y >= y + h))
+            if (!Collide || (r.X + r.W <= X || r.Y + r.H <= Y || r.X >= X + W || r.Y >= Y + H))
                 return 0;
 
             var sides = 0;
 
             // top
-            for (var i = 0; i < w; i++)
+            for (var i = 0; i < W; i++)
             {
-                if (r.InBounds(x + i, y))
+                if (r.InBounds(X + i, Y))
                 {
                     sides |= 8;
                     break;
@@ -325,9 +351,9 @@ namespace CCLE
             }
 
             // right
-            for (var i = 0; i < h; i++)
+            for (var i = 0; i < H; i++)
             {
-                if (r.InBounds(x + w - 1, y + i))
+                if (r.InBounds(X + W - 1, Y + i))
                 {
                     sides |= 4;
                     break;
@@ -335,9 +361,9 @@ namespace CCLE
             }
 
             // bottom
-            for (var i = 0; i < w; i++)
+            for (var i = 0; i < W; i++)
             {
-                if (r.InBounds(x + i, y + h - 1))
+                if (r.InBounds(X + i, Y + H - 1))
                 {
                     sides |= 2;
                     break;
@@ -345,9 +371,9 @@ namespace CCLE
             }
 
             // left
-            for (var i = 0; i < h; i++)
+            for (var i = 0; i < H; i++)
             {
-                if (r.InBounds(x, y + i))
+                if (r.InBounds(X, Y + i))
                 {
                     sides |= 1;
                     break;
@@ -359,93 +385,73 @@ namespace CCLE
 
         public Collision AnyCollidingSide()
         {
-            collision.Reset();
-            foreach (Sprite sprite in SpriteHandler.GetCollidables(z))
+            Collision.Reset();
+            foreach (Sprite sprite in SpriteHandler.GetCollidables(Z))
             {
                 if (sprite == this) continue;
                 var sides = CollidingSide(sprite);
                 if (sides > 0)
                 {
-                    collision.AddSides(sides);
-                    collision.AddSprite(sprite.GetName());
+                    Collision.AddSides(sides);
+                    Collision.AddSprite(sprite.GetName());
                 }
             }
-            return collision;
-        }
-
-        public Collision GetCollision()
-        {
-            return collision;
-        }
-
-        public void Trash()
-        {
-            trash = true;
-        }
-
-        public bool IsTrash()
-        {
-            return trash;
-        }
-
-        public string GetName()
-        {
-            return name;
+            return Collision;
         }
 
         public override string ToString()
         {
-            return "S:" + name + base.ToString();
+            return "S:" + Name + base.ToString();
         }
     }
 
     class Collision
     {
-        List<string> collidingSprites;
-        int collidingSides = 0;
+        List<string> Sprites;
+        int Sides = 0;
 
         Sprite owner;
 
         public Collision(Sprite owner)
         {
             this.owner = owner;
-            collidingSprites = new List<string>();
+            Sprites = new List<string>();
         }
 
         public bool IsColliding()
         {
-            return collidingSides > 0;
+            return Sides > 0;
         }
 
         public bool IsColliding(string name)
         {
-            return IsColliding() && collidingSprites.Contains(name);
+            return IsColliding() && Sprites.Contains(name);
         }
 
         public void Reset()
         {
-            collidingSprites.Clear();
-            collidingSides = 0;
+            Sprites.Clear();
+            Sides = 0;
         }
 
         public void AddSprite(string name)
         {
-            collidingSprites.Add(name);
+            Sprites.Add(name);
         }
 
         public void AddSides(int sides)
         {
-            collidingSides |= sides;
+            Sides |= sides;
         }
 
         public void KeepSides(int sides)
         {
-            collidingSides &= sides;
+            Sides &= sides;
         }
 
         public void CancelOpposing()
         {
-            if (collidingSides == 15) return;
+            if (Sides == 15) return;
 
             if (Up() && Down()) KeepSides(5);
             if (Left() && Right()) KeepSides(10);
@@ -453,27 +459,27 @@ namespace CCLE
 
         public bool Up()
         {
-            return (collidingSides & 8) == 8;
+            return (Sides & 8) == 8;
         }
         
         public bool Right()
         {
-            return (collidingSides & 4) == 4;
+            return (Sides & 4) == 4;
         }
 
         public bool Down()
         {
-            return (collidingSides & 2) == 2;
+            return (Sides & 2) == 2;
         }
 
         public bool Left()
         {
-            return (collidingSides & 1) == 1;
+            return (Sides & 1) == 1;
         }
 
-        public string[] GetObjects()
+        public string[] GetSpriteList()
         {
-            return collidingSprites.ToArray();
+            return Sprites.ToArray();
         }
 
         public override string ToString()
@@ -482,7 +488,7 @@ namespace CCLE
             {
                 return (Up() ? "U" : "") + (Right() ? "R" : "") 
                     + (Down() ? "D" : "") + (Left() ? "L" : "")
-                    + " : " + string.Join(",", collidingSprites.ToArray());
+                    + " : " + string.Join(",", Sprites.ToArray());
             }
             else
             {

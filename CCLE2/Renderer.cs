@@ -9,13 +9,14 @@ namespace CCLE
 {
     class Renderer
     {
-        static Window window;
+        static Window Window;
 
-        static List<Rect> dirty = new List<Rect>();
+        static List<Rect> DirtyRects = new List<Rect>();
+        private static Object dirtyLock = new object();
 
         public static void Init(Window w)
         {
-            window = w;
+            Window = w;
         }
 
         public static void FullRender()
@@ -23,51 +24,57 @@ namespace CCLE
             Console.Clear();
             foreach (Sprite sprite in SpriteHandler.GetSprites())
             {
-                sprite.DrawTo(window);
+                sprite.DrawTo(Window);
             }
         }
 
         static void UpdateRect(Rect rect)
         {
-            char[,] blockTexture = new char[rect.h, rect.w];
-            ConsoleColor[,] blockBackground = new ConsoleColor[rect.h, rect.w];
-            ConsoleColor[,] blockForeground = new ConsoleColor[rect.h, rect.w];
+            char[,] blockTexture = new char[rect.H, rect.W];
+            ConsoleColor[,] blockBackground = new ConsoleColor[rect.H, rect.W];
+            ConsoleColor[,] blockForeground = new ConsoleColor[rect.H, rect.W];
             
             foreach (Sprite sprite in SpriteHandler.GetSprites())
             {
                 sprite.FillScreenRect(rect, blockTexture, blockBackground, blockForeground);
             }
 
-            window.DrawColoredChars(rect.x, rect.y, blockTexture, blockBackground, blockForeground);
+            Window.DrawColoredChars(rect.X, rect.Y, blockTexture, blockBackground, blockForeground);
         }
 
         public static void UpdateSprite(Sprite sprite)
         {
-            dirty.Add(sprite);
-            dirty.Add(sprite.GetPreviousRect());
+            lock (dirtyLock)
+            {
+                DirtyRects.Add(sprite);
+                DirtyRects.Add(sprite.GetPreviousRect());
+            }
         }
 
         public static void Draw()
         {
-            var done = new List<Rect>();
-            foreach (Rect r in dirty.ToArray())
+            lock (dirtyLock)
             {
-                UpdateRect(r);
-                done.Add(r);
-            }
+                var done = new List<Rect>();
+                foreach (Rect r in DirtyRects.ToArray())
+                {
+                    UpdateRect(r);
+                    done.Add(r);
+                }
 
-            foreach (Rect r in done)
-            {
-                dirty.Remove(r);
-            }
+                foreach (Rect r in done)
+                {
+                    DirtyRects.Remove(r);
+                }
 
 
-            foreach (Sprite sprite in SpriteHandler.GetTrashed())
-            {
-                UpdateRect(sprite.GetPreviousRect());
-                UpdateRect(sprite);
+                foreach (Sprite sprite in SpriteHandler.GetTrashed())
+                {
+                    UpdateRect(sprite.GetPreviousRect());
+                    UpdateRect(sprite);
+                }
+                Window.SetCursorPosition(0, 0);
             }
-            window.SetCursorPosition(0, 0);
         }
     }
 
@@ -76,7 +83,7 @@ namespace CCLE
     /// </summary>
     class Window : Rect
     {
-        public string title;
+        public string Title;
 
         public Window()
             : base(Config.DEFAULT_WINDOW)
@@ -108,7 +115,7 @@ namespace CCLE
 
         public void SetCursorPosition(IVector pos)
         {
-            SetCursorPosition(pos.x, pos.y);
+            SetCursorPosition(pos.X, pos.Y);
         }
 
         public void SetCursorPosition(int x, int y)
@@ -118,7 +125,7 @@ namespace CCLE
 
         public void SetTitle(string title)
         {
-            this.title = title;
+            this.Title = title;
             Console.Title = title;
         }
 
@@ -167,7 +174,7 @@ namespace CCLE
 
         public void Write(Object str)
         {
-            if (Console.CursorTop == h && Console.CursorLeft == w)
+            if (Console.CursorTop == H && Console.CursorLeft == W)
                 return;
             Console.Write(str);
         }
